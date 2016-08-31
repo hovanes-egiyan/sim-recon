@@ -630,83 +630,7 @@ void DKinFitter::Fill_InputMatrices(void)
 		if((locKinFitParticleType == d_DecayingParticle) || (locKinFitParticleType == d_MissingParticle) || (locKinFitParticleType == d_TargetParticle))
 			continue; //uncertainties of target particle momentum are zero
 
-		TVector3 locMomentum = locKinFitParticle->Get_Momentum();
-		TVector3 locPosition = locKinFitParticle->Get_Position();
-		const TMatrixDSym& locCovarianceMatrix = *(locKinFitParticle->Get_CovarianceMatrix());
-
-		int locPxParamIndex = locKinFitParticle->Get_PxParamIndex();
-		int locVxParamIndex = locKinFitParticle->Get_VxParamIndex();
-		int locTParamIndex = locKinFitParticle->Get_TParamIndex();
-		int locEParamIndex = locKinFitParticle->Get_EParamIndex();
-
-		int locCovMatrixEParamIndex = locKinFitParticle->Get_CovMatrixEParamIndex();
-		int locCovMatrixPxParamIndex = locKinFitParticle->Get_CovMatrixPxParamIndex();
-		int locCovMatrixVxParamIndex = locKinFitParticle->Get_CovMatrixVxParamIndex();
-		int locCovMatrixTParamIndex = locKinFitParticle->Get_CovMatrixTParamIndex();
-
-		//localized terms (E, p, v, t)
-		if(locEParamIndex >= 0)
-			dVY(locEParamIndex, locEParamIndex) = locCovarianceMatrix(locCovMatrixEParamIndex, locCovMatrixEParamIndex);
-		if(locPxParamIndex >= 0)
-		{
-			for(unsigned int loc_j = 0; loc_j < 3; ++loc_j)
-			{
-				for(unsigned int loc_k = 0; loc_k < 3; ++loc_k)
-					dVY(locPxParamIndex + loc_j, locPxParamIndex + loc_k) = locCovarianceMatrix(loc_j + locCovMatrixPxParamIndex, loc_k + locCovMatrixPxParamIndex);
-			}
-		}
-		if(locVxParamIndex >= 0)
-		{
-			for(unsigned int loc_j = 0; loc_j < 3; ++loc_j)
-			{
-				for(unsigned int loc_k = 0; loc_k < 3; ++loc_k)
-					dVY(locVxParamIndex + loc_j, locVxParamIndex + loc_k) = locCovarianceMatrix(loc_j + locCovMatrixVxParamIndex, loc_k + locCovMatrixVxParamIndex);
-			}
-		}
-		if(locTParamIndex >= 0)
-			dVY(locTParamIndex, locTParamIndex) = locCovarianceMatrix(locCovMatrixTParamIndex, locCovMatrixTParamIndex);
-
-		//cross terms
-		if((locEParamIndex >= 0) && (locVxParamIndex >= 0))
-		{
-			for(unsigned int loc_j = 0; loc_j < 3; ++loc_j)
-			{
-				dVY(locEParamIndex + 0, locVxParamIndex + loc_j) = locCovarianceMatrix(locCovMatrixEParamIndex + 0, locCovMatrixVxParamIndex + loc_j);
-				dVY(locVxParamIndex + loc_j, locEParamIndex + 0) = locCovarianceMatrix(locCovMatrixVxParamIndex + loc_j, locCovMatrixEParamIndex + 0);
-			}
-		}
-		if((locEParamIndex >= 0) && (locTParamIndex >= 0))
-		{
-			dVY(locEParamIndex, locTParamIndex) = locCovarianceMatrix(locCovMatrixEParamIndex, locCovMatrixTParamIndex);
-			dVY(locTParamIndex, locEParamIndex) = locCovarianceMatrix(locCovMatrixTParamIndex, locCovMatrixEParamIndex);
-		}
-		if((locPxParamIndex >= 0) && (locVxParamIndex >= 0))
-		{
-			for(unsigned int loc_j = 0; loc_j < 3; ++loc_j)
-			{
-				for(unsigned int loc_k = 0; loc_k < 3; ++loc_k)
-				{
-					dVY(locPxParamIndex + loc_j, locVxParamIndex + loc_k) = locCovarianceMatrix(locCovMatrixPxParamIndex + loc_j, locCovMatrixVxParamIndex + loc_k);
-					dVY(locVxParamIndex + loc_k, locPxParamIndex + loc_j) = locCovarianceMatrix(locCovMatrixVxParamIndex + loc_k, locCovMatrixPxParamIndex + loc_j);
-				}
-			}
-		}
-		if((locPxParamIndex >= 0) && (locTParamIndex >= 0))
-		{
-			for(unsigned int loc_j = 0; loc_j < 3; ++loc_j)
-			{
-				dVY(locPxParamIndex + loc_j, locTParamIndex + 0) = locCovarianceMatrix(locCovMatrixPxParamIndex + loc_j, locCovMatrixTParamIndex + 0);
-				dVY(locTParamIndex + 0, locPxParamIndex + loc_j) = locCovarianceMatrix(locCovMatrixTParamIndex + 0, locCovMatrixPxParamIndex + loc_j);
-			}
-		}
-		if((locVxParamIndex >= 0) && (locTParamIndex >= 0))
-		{
-			for(unsigned int loc_j = 0; loc_j < 3; ++loc_j)
-			{
-				dVY(locVxParamIndex + loc_j, locTParamIndex + 0) = locCovarianceMatrix(locCovMatrixVxParamIndex + loc_j, locCovMatrixTParamIndex + 0);
-				dVY(locTParamIndex + 0, locVxParamIndex + loc_j) = locCovarianceMatrix(locCovMatrixTParamIndex + 0, locCovMatrixVxParamIndex + loc_j);
-			}
-		}
+		Set_CovarianceMatrix(locKinFitParticle);
 	}
 
 	if(dDebugLevel > 20)
@@ -719,6 +643,85 @@ void DKinFitter::Fill_InputMatrices(void)
 		Print_Matrix(dXi);
 		for(locParticleIterator = dKinFitParticles.begin(); locParticleIterator != dKinFitParticles.end(); ++locParticleIterator)
 			(*locParticleIterator)->Print_ParticleParams();
+	}
+}
+
+void DKinFitter::Set_CovarianceMatrix(DKinFitParticle* locKinFitParticle)
+{
+	const TMatrixDSym& locCovarianceMatrix = *(locKinFitParticle->Get_CovarianceMatrix());
+
+	int locPxParamIndex = locKinFitParticle->Get_PxParamIndex();
+	int locVxParamIndex = locKinFitParticle->Get_VxParamIndex();
+	int locTParamIndex = locKinFitParticle->Get_TParamIndex();
+	int locEParamIndex = locKinFitParticle->Get_EParamIndex();
+
+	int locCovMatrixEParamIndex = locKinFitParticle->Get_CovMatrixEParamIndex();
+	int locCovMatrixPxParamIndex = locKinFitParticle->Get_CovMatrixPxParamIndex();
+	int locCovMatrixVxParamIndex = locKinFitParticle->Get_CovMatrixVxParamIndex();
+	int locCovMatrixTParamIndex = locKinFitParticle->Get_CovMatrixTParamIndex();
+
+	//localized terms (E, p, v, t)
+	if(locEParamIndex >= 0)
+		dVY(locEParamIndex, locEParamIndex) = locCovarianceMatrix(locCovMatrixEParamIndex, locCovMatrixEParamIndex);
+	if(locPxParamIndex >= 0)
+	{
+		for(unsigned int loc_j = 0; loc_j < 3; ++loc_j)
+		{
+			for(unsigned int loc_k = 0; loc_k < 3; ++loc_k)
+				dVY(locPxParamIndex + loc_j, locPxParamIndex + loc_k) = locCovarianceMatrix(loc_j + locCovMatrixPxParamIndex, loc_k + locCovMatrixPxParamIndex);
+		}
+	}
+	if(locVxParamIndex >= 0)
+	{
+		for(unsigned int loc_j = 0; loc_j < 3; ++loc_j)
+		{
+			for(unsigned int loc_k = 0; loc_k < 3; ++loc_k)
+				dVY(locVxParamIndex + loc_j, locVxParamIndex + loc_k) = locCovarianceMatrix(loc_j + locCovMatrixVxParamIndex, loc_k + locCovMatrixVxParamIndex);
+		}
+	}
+	if(locTParamIndex >= 0)
+		dVY(locTParamIndex, locTParamIndex) = locCovarianceMatrix(locCovMatrixTParamIndex, locCovMatrixTParamIndex);
+
+	//cross terms
+	if((locEParamIndex >= 0) && (locVxParamIndex >= 0))
+	{
+		for(unsigned int loc_j = 0; loc_j < 3; ++loc_j)
+		{
+			dVY(locEParamIndex + 0, locVxParamIndex + loc_j) = locCovarianceMatrix(locCovMatrixEParamIndex + 0, locCovMatrixVxParamIndex + loc_j);
+			dVY(locVxParamIndex + loc_j, locEParamIndex + 0) = locCovarianceMatrix(locCovMatrixVxParamIndex + loc_j, locCovMatrixEParamIndex + 0);
+		}
+	}
+	if((locEParamIndex >= 0) && (locTParamIndex >= 0))
+	{
+		dVY(locEParamIndex, locTParamIndex) = locCovarianceMatrix(locCovMatrixEParamIndex, locCovMatrixTParamIndex);
+		dVY(locTParamIndex, locEParamIndex) = locCovarianceMatrix(locCovMatrixTParamIndex, locCovMatrixEParamIndex);
+	}
+	if((locPxParamIndex >= 0) && (locVxParamIndex >= 0))
+	{
+		for(unsigned int loc_j = 0; loc_j < 3; ++loc_j)
+		{
+			for(unsigned int loc_k = 0; loc_k < 3; ++loc_k)
+			{
+				dVY(locPxParamIndex + loc_j, locVxParamIndex + loc_k) = locCovarianceMatrix(locCovMatrixPxParamIndex + loc_j, locCovMatrixVxParamIndex + loc_k);
+				dVY(locVxParamIndex + loc_k, locPxParamIndex + loc_j) = locCovarianceMatrix(locCovMatrixVxParamIndex + loc_k, locCovMatrixPxParamIndex + loc_j);
+			}
+		}
+	}
+	if((locPxParamIndex >= 0) && (locTParamIndex >= 0))
+	{
+		for(unsigned int loc_j = 0; loc_j < 3; ++loc_j)
+		{
+			dVY(locPxParamIndex + loc_j, locTParamIndex + 0) = locCovarianceMatrix(locCovMatrixPxParamIndex + loc_j, locCovMatrixTParamIndex + 0);
+			dVY(locTParamIndex + 0, locPxParamIndex + loc_j) = locCovarianceMatrix(locCovMatrixTParamIndex + 0, locCovMatrixPxParamIndex + loc_j);
+		}
+	}
+	if((locVxParamIndex >= 0) && (locTParamIndex >= 0))
+	{
+		for(unsigned int loc_j = 0; loc_j < 3; ++loc_j)
+		{
+			dVY(locVxParamIndex + loc_j, locTParamIndex + 0) = locCovarianceMatrix(locCovMatrixVxParamIndex + loc_j, locCovMatrixTParamIndex + 0);
+			dVY(locTParamIndex + 0, locVxParamIndex + loc_j) = locCovarianceMatrix(locCovMatrixTParamIndex + 0, locCovMatrixVxParamIndex + loc_j);
+		}
 	}
 }
 
@@ -2431,6 +2434,57 @@ void DKinFitter::Update_ParticleParams(void)
 		if(locKinFitParticle->Get_KinFitParticleType() != d_DecayingParticle)
 			continue;
 		locKinFitParticle->Set_Momentum(dKinFitUtils->Calc_DecayingP4_ByPosition(locKinFitParticle, true).Vect());
+	}
+
+	Propagate_MeasuredToKinFit();
+}
+
+void DKinFitter::Propagate_MeasuredToKinFit(void)
+{
+	//only for particles used to constrain a vertex fit
+	set<DKinFitParticle*>::iterator locParticleIterator = dKinFitParticles.begin();
+	for(; locParticleIterator != dKinFitParticles.end(); ++locParticleIterator)
+	{
+		DKinFitParticle* locKinFitParticle = *locParticleIterator;
+		DKinFitParticleType locKinFitParticleType = locKinFitParticle->Get_KinFitParticleType();
+		if((locKinFitParticleType == d_TargetParticle) || (locKinFitParticleType == d_DecayingParticle) || (locKinFitParticleType == d_MissingParticle))
+			continue; //nothing to update
+
+		int locVxParamIndex = locKinFitParticle->Get_VxParamIndex();
+		int locPxParamIndex = locKinFitParticle->Get_PxParamIndex();
+		if((locVxParamIndex < 0) || (locPxParamIndex < 0))
+			continue; //x3, p3 not used
+
+		int locCharge = locKinFitParticle->Get_Charge();
+		if(locCharge == 0)
+			continue; //neutral
+
+		//extract measured x3 & p3 from dY
+		//use cov matrix from particle
+		TLorentzVector locMeasuredX4(dY(locVxParamIndex, 0), dY(locVxParamIndex + 1, 0), dY(locVxParamIndex + 2, 0), 0.0);
+		TLorentzVector locMeasuredP4(dY(locPxParamIndex, 0), dY(locPxParamIndex + 1, 0), dY(locPxParamIndex + 2, 0), 0.0);
+		TVector3 locKinFitPosition(dEta(locVxParamIndex, 0), dEta(locVxParamIndex + 1, 0), dEta(locVxParamIndex + 2, 0));
+
+		locMeasuredP4.SetE(sqrt(locMeasuredP4.P()*locMeasuredP4.P() + locKinFitParticle->Get_Mass()*locKinFitParticle->Get_Mass()));
+		int locTParamIndex = locKinFitParticle->Get_TParamIndex();
+		if(locTParamIndex > 0)
+			locMeasuredX4.SetT(dY(locTParamIndex, 0));
+
+		//propagate
+		dKinFitUtils->Propagate_MeasuredToKinFit(locCharge, locKinFitPosition, locMeasuredX4, locMeasuredP4, locKinFitParticle->dCovarianceMatrix);
+
+		//save x3/p3 to dY
+		dY(locPxParamIndex, 0) = locMeasuredP4.X();
+		dY(locPxParamIndex + 1, 0) = locMeasuredP4.Y();
+		dY(locPxParamIndex + 2, 0) = locMeasuredP4.Z();
+		dY(locVxParamIndex, 0) = locMeasuredX4.X();
+		dY(locVxParamIndex + 1, 0) = locMeasuredX4.Y();
+		dY(locVxParamIndex + 2, 0) = locMeasuredX4.Z();
+		if(locTParamIndex > 0)
+			dY(locTParamIndex, 0) = locMeasuredX4.T();
+
+		//save cov matrix to dVY
+		Set_CovarianceMatrix(locKinFitParticle);
 	}
 }
 

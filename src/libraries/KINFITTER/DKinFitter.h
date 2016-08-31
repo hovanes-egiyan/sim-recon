@@ -124,6 +124,7 @@ class DKinFitter //purely virtual: cannot directly instantiate class, can only i
 		void Resize_Matrices(void);
 		void Zero_Matrices(void);
 		void Fill_InputMatrices(void);
+		void Set_CovarianceMatrix(DKinFitParticle* locKinFitParticle);
 
 		/************************************************************ CALCULATE MATRICES ************************************************************/
 
@@ -148,6 +149,7 @@ class DKinFitter //purely virtual: cannot directly instantiate class, can only i
 		/************************************************************* UPDATE & FINAL ***************************************************************/
 
 		void Update_ParticleParams(void);
+		void Propagate_MeasuredToKinFit(void);
 		void Calc_Pulls(void);
 		void Set_FinalTrackInfo(void);
 
