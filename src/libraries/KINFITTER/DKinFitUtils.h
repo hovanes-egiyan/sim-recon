@@ -203,8 +203,8 @@ class DKinFitUtils //purely virtual: cannot directly instantiate class, can only
 		bool Calc_PathLength(DKinFitParticle* locKinFitParticle, const TMatrixDSym* locVXi, const TMatrixDSym& locCovarianceMatrix, pair<double, double>& locPathLengthPair) const;
 		void Calc_DecayingParticleJacobian(DKinFitParticle* locKinFitParticle, bool locDontPropagateDecayingP3Flag, double locStateSignMultiplier, int locNumEta, const map<DKinFitParticle*, int>& locAdditionalPxParamIndices, TMatrixD& locJacobian) const;
 
-		void Propagate_MeasuredToKinFit(int locCharge, TVector3 locKinFitPosition, TLorentzVector& locMeasuredPosition, TLorentzVector& locMeasuredMomentum, TMatrixDSym* locCovarianceMatrix) const;
-		double Calc_PathLength_Step(int locCharge, TVector3 locKinFitPosition, TLorentzVector& locMeasuredPosition, TLorentzVector& locMeasuredMomentum) const;
+		void Propagate_MeasuredToKinFit(int locCharge, TVector3 locKinFitPosition, TLorentzVector& locMeasuredX4, TLorentzVector& locMeasuredP4, TMatrixDSym* locCovarianceMatrix) const;
+		double Calc_PathLength_Step(int locCharge, TVector3 locKinFitPosition, TLorentzVector& locMeasuredX4, TLorentzVector& locMeasuredP4) const;
 		double Calc_PathLength_FineGrained(int locCharge, TVector3 locKinFitPosition, TVector3 locMeasuredPosition, TVector3 locMeasuredMomentum) const;
 		void Propagate_Track(double locDeltaPathLength, int locCharge, TLorentzVector& locX4, TLorentzVector& locP4, TMatrixDSym* locCovarianceMatrix) const;
 

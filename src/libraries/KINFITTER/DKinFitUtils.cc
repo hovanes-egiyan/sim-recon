@@ -1587,7 +1587,7 @@ double Calc_PathLength_LargeAngle(int locCharge, TVector3 locMeasuredPosition, T
 	//First, propagate the track to somewhere very close to the true POCA
 	//Then, the equation can be solved by substituting cos(x) = 1, sin(x) = x
 
-void DKinFitUtils::Propagate_MeasuredToKinFit(int locCharge, TVector3 locKinFitPosition, TLorentzVector& locMeasuredPosition, TLorentzVector& locMeasuredMomentum, TMatrixDSym* locCovarianceMatrix) const
+void DKinFitUtils::Propagate_MeasuredToKinFit(int locCharge, TVector3 locKinFitPosition, TLorentzVector& locMeasuredX4, TLorentzVector& locMeasuredP4, TMatrixDSym* locCovarianceMatrix) const
 {
 	//ASSUMES THAT THE B-FIELD IS IN THE +Z DIRECTION!!!!!!!!!!!!!!!
 	if(!Get_IsBFieldNearBeamline() || (locCharge == 0))
@@ -1595,32 +1595,32 @@ void DKinFitUtils::Propagate_MeasuredToKinFit(int locCharge, TVector3 locKinFitP
 
 	//propagate the track to the same z as the vertex (if pz != 0)
 	double locTotalDeltaPathLength = 0.0;
-	TVector3 locTempPropagatedPosition = locMeasuredPosition;
-	TVector3 locTempPropagatedMomentum = locMeasuredMomentum;
-	if(fabs(locMeasuredMomentum.Pz()) > 0.0)
+	TLorentzVector locTempPropagatedPosition = locMeasuredX4;
+	TLorentzVector locTempPropagatedMomentum = locMeasuredP4;
+	if(fabs(locMeasuredP4.Pz()) > 0.0)
 	{
-		locTotalDeltaPathLength += (locKinFitPosition.Z() - locMeasuredPosition.Z())*locMeasuredMomentum.Mag()/locMeasuredMomentum.Pz(); //s = (z - z0)*p/p0z
-		Propagate_Track(locTotalDeltaPathLength, locTempPropagatedPosition, locTempPropagatedMomentum, NULL);
+		locTotalDeltaPathLength += (locKinFitPosition.Z() - locMeasuredX4.Z())*locMeasuredP4.P()/locMeasuredP4.Pz(); //s = (z - z0)*p/p0z
+		Propagate_Track(locTotalDeltaPathLength, locCharge, locTempPropagatedPosition, locTempPropagatedMomentum, NULL);
 	}
 
 	//now, step along the track until we get close to the POCA
 	locTotalDeltaPathLength += Calc_PathLength_Step(locCharge, locKinFitPosition, locTempPropagatedPosition, locTempPropagatedMomentum);
 
 	//now, the path length is very close to accurate. get the rest of the way there
-	locTotalDeltaPathLength += Compute_PathLength_FineGrained(locCharge, locKinFitPosition, locTempPropagatedPosition.Vect(), locTempPropagatedMomentum.Vect())
+	locTotalDeltaPathLength += Calc_PathLength_FineGrained(locCharge, locKinFitPosition, locTempPropagatedPosition.Vect(), locTempPropagatedMomentum.Vect());
 
 	//Finally, propagate the track the given distance and return
-	Propagate_Track(locTotalDeltaPathLength, locMeasuredPosition, locMeasuredMomentum, locCovarianceMatrix);
+	Propagate_Track(locTotalDeltaPathLength, locCharge, locMeasuredX4, locMeasuredP4, locCovarianceMatrix);
 }
 
-double DKinFitUtils::Calc_PathLength_Step(int locCharge, TVector3 locKinFitPosition, TLorentzVector& locMeasuredPosition, TLorentzVector& locMeasuredMomentum) const
+double DKinFitUtils::Calc_PathLength_Step(int locCharge, TVector3 locKinFitPosition, TLorentzVector& locMeasuredX4, TLorentzVector& locMeasuredP4) const
 {
 	//now, step slowly along the track (in path length), trying to get closer to the POCA
 		//for the final calculation to work, rho*s must be small: cos(rho*s) -> 1
 	TVector3 locBField = Get_BField(locKinFitPosition);
 	double locA = -0.00299792458*(double(locCharge))*locBField.Mag();
 
-	double locPMag = locMeasuredMomentum.Mag();
+	double locPMag = locMeasuredP4.P();
 	double locPathLengthOneRotation = 2.0*TMath::Pi()*locPMag/locA;
 	double locStepDistance = locPathLengthOneRotation/12.0; //30 degrees
 	double locRhoS = locStepDistance*locA/locPMag;
@@ -1628,15 +1628,15 @@ double DKinFitUtils::Calc_PathLength_Step(int locCharge, TVector3 locKinFitPosit
 	//First, try stepping in +pvec direction
 	double locStepDirection = 1.0;
 	double locTotalDeltaPathLength = 0.0;
-	double locDeltaX3 = (locMeasuredPosition - locKinFitPosition).Mag();
+	double locDeltaX3 = (locMeasuredX4.Vect() - locKinFitPosition).Mag();
 	double locRhoSCutOff = 0.1;
 	while(locRhoS > locRhoSCutOff) //at this point, cos(rho*s) = 0.995: close enough
 	{
 		double locDeltaPathLength = locStepDirection*locStepDistance;
 		locTotalDeltaPathLength += locDeltaPathLength;
-		Propagate_Track(locDeltaPathLength, locMeasuredPosition, locMeasuredMomentum, NULL);
+		Propagate_Track(locDeltaPathLength, locCharge, locMeasuredX4, locMeasuredP4, NULL);
 
-		locNewDeltaX3 = (locMeasuredPosition - locKinFitPosition).Mag();
+		double locNewDeltaX3 = (locMeasuredX4.Vect() - locKinFitPosition).Mag();
 		bool locGettingCloserFlag = (locNewDeltaX3 < locDeltaX3);
 		locDeltaX3 = locNewDeltaX3;
 
@@ -1652,7 +1652,7 @@ double DKinFitUtils::Calc_PathLength_Step(int locCharge, TVector3 locKinFitPosit
 		if(locRhoS < locRhoSCutOff)
 		{
 			locTotalDeltaPathLength -= locDeltaPathLength;
-			Propagate_Track(-1.0*locDeltaPathLength, locMeasuredPosition, locMeasuredMomentum, NULL);
+			Propagate_Track(-1.0*locDeltaPathLength, locCharge, locMeasuredX4, locMeasuredP4, NULL);
 		}
 	}
 
@@ -1676,10 +1676,10 @@ double DKinFitUtils::Calc_PathLength_FineGrained(int locCharge, TVector3 locKinF
 	//Solving gives: s = - (F*C + D) / (F*B + E*rho)
 	//Note that B = F
 
-	TVector3 locBField = Get_BField(locVertexPosition);
+	TVector3 locBField = Get_BField(locMeasuredPosition);
 	double locA = -0.00299792458*(double(locCharge))*locBField.Mag();
-	double locPMag = locMeasuredMomentum.Mag()
-	double locRho = locA/locPMag
+	double locPMag = locMeasuredMomentum.Mag();
+	double locRho = locA/locPMag;
 
 	TVector3 locDeltaX3 = locMeasuredPosition - locKinFitPosition;
 	double locF = locMeasuredMomentum.Pz()/locPMag;
@@ -1693,7 +1693,7 @@ double DKinFitUtils::Calc_PathLength_FineGrained(int locCharge, TVector3 locKinF
 void DKinFitUtils::Propagate_Track(double locDeltaPathLength, int locCharge, TLorentzVector& locX4, TLorentzVector& locP4, TMatrixDSym* locCovarianceMatrix) const
 {
 	//ASSUMES THAT THE B-FIELD IS IN THE +Z DIRECTION!!!!!!!!!!!!!!!
-	TVector3 locBField = Get_BField(locVertexPosition);
+	TVector3 locBField = Get_BField(locX4.Vect());
 	TVector3 locH = locBField.Unit();
 	double locA = -0.00299792458*(double(locCharge))*locBField.Mag();
 
@@ -1701,7 +1701,7 @@ void DKinFitUtils::Propagate_Track(double locDeltaPathLength, int locCharge, TLo
 	double locRhoS = locDeltaPathLength*locA/locPMag;
 
 	double locSpeedOfLight = 29.9792458;
-	TVector3 locDeltaX4; //x - x0
+	TLorentzVector locDeltaX4; //x - x0
 	locDeltaX4.SetX(locP4.Px()*sin(locRhoS)/locA - locP4.Py()*(1.0 - cos(locRhoS))/locA);
 	locDeltaX4.SetY(locP4.Py()*sin(locRhoS)/locA + locP4.Px()*(1.0 - cos(locRhoS))/locA);
 	locDeltaX4.SetZ(locP4.Pz()*locDeltaPathLength/locPMag);
@@ -1715,7 +1715,7 @@ void DKinFitUtils::Propagate_Track(double locDeltaPathLength, int locCharge, TLo
 	}
 
 	//transform(i, j) = di/dj, i = new, j = old //pxyz, xyz, t
-	DMatrix locTransformMatrix(7, 7);
+	TMatrixD locTransformMatrix(7, 7);
 	locTransformMatrix.Zero();
 
 	double locPCubed = locPMag*locPMag*locPMag;
