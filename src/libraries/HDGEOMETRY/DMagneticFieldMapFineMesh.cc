@@ -673,7 +673,6 @@ void DMagneticFieldMapFineMesh::GetField(double x, double y, double z, double &B
 	/// database. It interpolates between grid points using the
 	/// gradient values calculated in ReadMap (called from the
 	/// constructor).
-  
   Bx = By = Bz = 0.0;
 	double Br=0.0;
 
@@ -713,10 +712,11 @@ void DMagneticFieldMapFineMesh::GetField(double x, double y, double z, double &B
 	  // Fractional distance between map points.
 	  double ur = (r - B->x)*one_over_dx;
 	  double uz = (z - B->z)*one_over_dz;
-	  
+
 	  // Use gradient to project grid point to requested position
 	  Br = B->Bx+B->dBxdx*ur+B->dBxdz*uz;
 	  Bz = B->Bz+B->dBzdx*ur+B->dBzdz*uz;
+
 	}
         else{ // otherwise do a simple lookup in the fine-mesh table
 	  unsigned int indr=static_cast<unsigned int>(r*rscale);
