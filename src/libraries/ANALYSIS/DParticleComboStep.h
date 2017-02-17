@@ -104,6 +104,7 @@ class DParticleComboStep
 		inline DVector3 Get_Position(void) const{return dSpacetimeVertex.Vect();}
 		inline double Get_Time(void) const{return dSpacetimeVertex.T();}
 		inline DLorentzVector Get_SpacetimeVertex(void) const{return dSpacetimeVertex;}
+		inline DLorentzVector Get_SpacetimeVertex_Measured(void) const{return (dMeasuredStep != nullptr) ? dMeasuredStep->Get_SpacetimeVertex() : dSpacetimeVertex;}
 
 		// GET BLUEPRINT
 		inline const DParticleComboBlueprintStep* Get_ParticleComboBlueprintStep(void) const{return dParticleComboBlueprintStep;}

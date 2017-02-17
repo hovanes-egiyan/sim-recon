@@ -745,6 +745,9 @@ void DEventWriterROOT::Create_Branches_BeamComboParticle(DTreeBranchRegister& lo
 	//IDENTIFIER
 	locBranchRegister.Register_FundamentalArray<Int_t>(Build_BranchName(locParticleBranchName, "BeamIndex"), locArraySizeString, dInitNumComboArraySize);
 
+	//KINEMATICS: MEASURED
+	locBranchRegister.Register_ClonesArray<TLorentzVector>(Build_BranchName(locParticleBranchName, "X4_Measured"), dInitNumComboArraySize);
+
 	//KINEMATICS: KINFIT //at the interaction vertex
 	if(locKinFitType != d_NoFit)
 	{
@@ -1749,7 +1752,9 @@ void DEventWriterROOT::Fill_ComboStepData(DTreeFillData* locTreeFillData, const 
 		pair<oid_t, Particle_t> locBeamPair(locMeasuredBeamPhoton->id, locMeasuredBeamPhoton->PID());
 		size_t locBeamIndex = locObjectToArrayIndexMap.find(locBeamPair)->second;
 
-		Fill_ComboBeamData(locTreeFillData, locComboIndex, locBeamPhoton, locBeamIndex, locKinFitType);
+		DLorentzVector locDX4Measured = locParticleComboStep->Get_SpacetimeVertex_Measured();
+		TLorentzVector locX4Measured(locDX4Measured.X(), locDX4Measured.Y(), locDX4Measured.Z(), locDX4Measured.T());
+		Fill_ComboBeamData(locTreeFillData, locComboIndex, locX4Measured, locBeamPhoton, locBeamIndex, locKinFitType);
 	}
 	else //decaying
 	{
@@ -1845,12 +1850,15 @@ void DEventWriterROOT::Fill_ComboStepData(DTreeFillData* locTreeFillData, const 
 	}
 }
 
-void DEventWriterROOT::Fill_ComboBeamData(DTreeFillData* locTreeFillData, unsigned int locComboIndex, const DBeamPhoton* locBeamPhoton, size_t locBeamIndex, DKinFitType locKinFitType) const
+void DEventWriterROOT::Fill_ComboBeamData(DTreeFillData* locTreeFillData, unsigned int locComboIndex, TLorentzVector locX4Measured, const DBeamPhoton* locBeamPhoton, size_t locBeamIndex, DKinFitType locKinFitType) const
 {
 	string locParticleBranchName = "ComboBeam";
 
 	//IDENTIFIER
 	locTreeFillData->Fill_Array<Int_t>(Build_BranchName(locParticleBranchName, "BeamIndex"), locBeamIndex, locComboIndex);
+
+	//KINEMATICS: MEASURED
+	locTreeFillData->Fill_Array<TLorentzVector>(Build_BranchName(locParticleBranchName, "X4_Measured"), locX4Measured, locComboIndex);
 
 	//KINEMATICS: KINFIT
 	if(locKinFitType != d_NoFit)
